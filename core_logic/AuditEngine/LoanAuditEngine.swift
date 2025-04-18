@@ -1,7 +1,7 @@
 import Foundation
 
 /// Shared constants and policy values used across audit rules
-public struct AuditPolicy {
+public struct AuditPolicy: Sendable {
     // Forbearance and deferment thresholds
     /// Maximum recommended forbearance duration in months (36 months / 3 years)
     /// Federal guidance typically suggests limiting forbearance to avoid excessive interest capitalization
@@ -42,28 +42,28 @@ public struct AuditPolicy {
 }
 
 /// Helper for formatting values consistently across the audit engine
-public struct AuditFormatters {
-    /// Shared date formatter for consistent date representation
-    public static let dateFormatter: DateFormatter = {
+public enum AuditFormatters {
+    /// Thread-safe date formatter function that creates a new instance each time
+    public static func dateFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter
-    }()
+    }
     
-    /// Shared number formatter for interest rates
-    public static let interestRateFormatter: NumberFormatter = {
+    /// Thread-safe number formatter function for interest rates
+    public static func interestRateFormatter() -> NumberFormatter {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter
-    }()
+    }
     
-    /// Format a date using the shared formatter with current locale
+    /// Format a date using a thread-safe formatter with current locale
     public static func formatDate(_ date: Date) -> String {
         return NSLocalizedString(
-            dateFormatter.string(from: date),
+            dateFormatter().string(from: date),
             comment: "Formatted date for audit report"
         )
     }
@@ -71,14 +71,19 @@ public struct AuditFormatters {
     /// Format an interest rate as a percentage string
     public static func formatInterestRate(_ rate: Double) -> String {
         return NSLocalizedString(
-            "\(interestRateFormatter.string(from: NSNumber(value: rate)) ?? String(format: "%.2f", rate))%",
+            "\(interestRateFormatter().string(from: NSNumber(value: rate)) ?? String(format: "%.2f", rate))%",
             comment: "Formatted interest rate for audit report"
         )
+    }
+    
+    /// Format an integer using locale settings
+    public static func formatInteger(_ number: Int) -> String {
+        return NumberFormatter.localizedString(from: number as NSNumber, number: .decimal)
     }
 }
 
 /// Helper for scaling severity based on value thresholds
-public struct SeverityScaler {
+public struct SeverityScaler: Sendable {
     /// Calculate severity based on a value and thresholds
     /// - Parameters:
     ///   - value: The value to evaluate
@@ -86,28 +91,30 @@ public struct SeverityScaler {
     ///   - moderate: Threshold for moderate severity
     ///   - high: Threshold for high severity
     ///   - critical: Threshold for critical severity
-    /// - Returns: The appropriate severity level based on thresholds
+    /// - Returns: The appropriate severity level based on thresholds, or nil if below moderate threshold
     public static func scale(
         value: Double,
         low: Double? = nil,
         moderate: Double,
         high: Double,
         critical: Double? = nil
-    ) -> AuditSeverity {
+    ) -> AuditSeverity? {
         if let criticalThreshold = critical, value >= criticalThreshold {
             return .critical
         } else if value >= high {
             return .high
         } else if value >= moderate {
             return .moderate
-        } else {
+        } else if let lowThreshold = low, value >= lowThreshold {
             return .low
+        } else {
+            return nil
         }
     }
 }
 
 /// The severity level of an audit issue
-public enum AuditSeverity: Comparable {
+public enum AuditSeverity: Comparable, Sendable {
     case low
     case moderate
     case high
@@ -149,7 +156,7 @@ extension AuditSeverity: CustomStringConvertible {
 }
 
 /// The type of issues that can be found during a loan audit
-public enum AuditIssue: String, CaseIterable {
+public enum AuditIssue: String, CaseIterable, Sendable {
     case excessiveForbearance
     case unexplainedInterestCapitalization
     case extendedNonPayment
@@ -195,7 +202,7 @@ public enum AuditIssue: String, CaseIterable {
 }
 
 /// The result of evaluating a loan with an audit rule
-public struct AuditResult: Equatable {
+public struct AuditResult: Equatable, Sendable {
     /// The type of issue identified
     public let issueType: AuditIssue
     
@@ -214,13 +221,21 @@ public struct AuditResult: Equatable {
     /// Dates affected by this issue, if applicable
     public let affectedDates: [Date]?
     
+    /// Optional URL for documentation about this issue
+    public let docsURL: URL?
+    
+    /// Title of the issue (defaults to issue type description if not provided)
+    public let title: String
+    
     public init(
         issueType: AuditIssue,
         ruleCode: String,
         description: String,
         severity: AuditSeverity,
         suggestedAction: String,
-        affectedDates: [Date]? = nil
+        affectedDates: [Date]? = nil,
+        docsURL: URL? = nil,
+        title: String? = nil
     ) {
         self.issueType = issueType
         self.ruleCode = ruleCode
@@ -228,6 +243,8 @@ public struct AuditResult: Equatable {
         self.severity = severity
         self.suggestedAction = suggestedAction
         self.affectedDates = affectedDates
+        self.docsURL = docsURL
+        self.title = title ?? issueType.localizedDescription
     }
     
     /// Equatable implementation that ignores dates since they're hard to compare
@@ -236,13 +253,32 @@ public struct AuditResult: Equatable {
                lhs.ruleCode == rhs.ruleCode &&
                lhs.description == rhs.description &&
                lhs.severity == rhs.severity &&
-               lhs.suggestedAction == rhs.suggestedAction
-        // Note: We deliberately don't compare affectedDates for equality
+               lhs.suggestedAction == rhs.suggestedAction &&
+               lhs.title == rhs.title
+        // Note: We deliberately don't compare affectedDates or docsURL for equality
+    }
+}
+
+/// Extension to provide grouping functionality for arrays of audit results
+extension Array where Element == AuditResult {
+    /// Group results by issue type
+    /// - Returns: Dictionary mapping issue types to arrays of results
+    public func groupedByIssue() -> [AuditIssue: [AuditResult]] {
+        var grouped: [AuditIssue: [AuditResult]] = [:]
+        
+        for result in self {
+            if grouped[result.issueType] == nil {
+                grouped[result.issueType] = []
+            }
+            grouped[result.issueType]?.append(result)
+        }
+        
+        return grouped
     }
 }
 
 /// Protocol defining a rule that can be used to audit a loan
-public protocol AuditRule {
+public protocol AuditRule: Sendable {
     /// Evaluate a loan and return an AuditResult if an issue is found
     /// - Parameter loan: The loan details to evaluate
     /// - Returns: An AuditResult if an issue is found, nil otherwise
@@ -251,6 +287,23 @@ public protocol AuditRule {
     
     /// Returns a unique code identifying this rule
     var ruleCode: String { get }
+    
+    /// User-friendly title for this rule
+    var title: String { get }
+    
+    /// Optional URL for documentation about this rule
+    var docsURL: URL? { get }
+}
+
+/// Default implementation for optional properties
+extension AuditRule {
+    public var title: String {
+        return ruleCode
+    }
+    
+    public var docsURL: URL? {
+        return nil
+    }
 }
 
 /// Base class for duration-based non-payment rules
@@ -260,17 +313,23 @@ public class NonPaymentDurationRule: AuditRule {
     private let ruleName: String
     private let issueType: AuditIssue
     public let ruleCode: String
+    public let title: String
+    public let docsURL: URL?
     
     init(
         maximumMonths: Int,
         ruleName: String,
         issueType: AuditIssue,
-        ruleCode: String
+        ruleCode: String,
+        title: String? = nil,
+        docsURL: URL? = nil
     ) {
         self.maximumMonths = maximumMonths
         self.ruleName = ruleName
         self.issueType = issueType
         self.ruleCode = ruleCode
+        self.title = title ?? ruleName
+        self.docsURL = docsURL
     }
     
     /// Evaluates duration against the threshold
@@ -290,13 +349,16 @@ public class NonPaymentDurationRule: AuditRule {
     ) -> AuditResult? {
         guard actualMonths > maximumMonths else { return nil }
         
-        let description = String(format: messageFormat, actualMonths, maximumMonths)
+        let description = String(format: messageFormat,
+            AuditFormatters.formatInteger(actualMonths),
+            AuditFormatters.formatInteger(maximumMonths)
+        )
         
         let severity = SeverityScaler.scale(
             value: Double(actualMonths),
             moderate: Double(maximumMonths),
             high: Double(AuditPolicy.severeForbearanceMonths)
-        )
+        ) ?? .low
         
         return AuditResult(
             issueType: issueType,
@@ -304,7 +366,9 @@ public class NonPaymentDurationRule: AuditRule {
             description: description,
             severity: severity,
             suggestedAction: actionMessage,
-            affectedDates: affectedDates
+            affectedDates: affectedDates,
+            docsURL: docsURL,
+            title: title
         )
     }
     
@@ -322,7 +386,9 @@ public final class ExcessiveForbearanceRule: NonPaymentDurationRule {
             maximumMonths: AuditPolicy.maxForbearanceMonths,
             ruleName: "ExcessiveForbearance",
             issueType: .excessiveForbearance,
-            ruleCode: "FORBEAR_EXCESS_001"
+            ruleCode: "FORBEAR_EXCESS_001",
+            title: NSLocalizedString("Excessive Forbearance Duration", comment: "Title for excessive forbearance rule"),
+            docsURL: URL(string: "https://studentaid.gov/manage-loans/lower-payments/get-temporary-relief/forbearance")
         )
     }
     
@@ -332,7 +398,9 @@ public final class ExcessiveForbearanceRule: NonPaymentDurationRule {
             maximumMonths: maximumMonths,
             ruleName: "ExcessiveForbearance",
             issueType: .excessiveForbearance,
-            ruleCode: "FORBEAR_EXCESS_001"
+            ruleCode: "FORBEAR_EXCESS_001",
+            title: NSLocalizedString("Excessive Forbearance Duration", comment: "Title for excessive forbearance rule"),
+            docsURL: URL(string: "https://studentaid.gov/manage-loans/lower-payments/get-temporary-relief/forbearance")
         )
     }
     
@@ -348,11 +416,11 @@ public final class ExcessiveForbearanceRule: NonPaymentDurationRule {
             actualMonths: totalForbearanceMonths,
             loan: loan,
             messageFormat: NSLocalizedString(
-                "Loan has %d months of forbearance, which exceeds the recommended maximum of %d months",
+                "Loan has %@ months of forbearance, which exceeds the recommended maximum of %@ months",
                 comment: "Message format for excessive forbearance rule"
             ),
             actionMessage: NSLocalizedString(
-                "Review forbearance history with loan servicer. Extended forbearance may lead to significant interest capitalization.",
+                "Review the full forbearance history with your loan servicer. Extended forbearance can dramatically increase interest capitalization.",
                 comment: "Action for excessive forbearance"
             ),
             affectedDates: forbearanceDates
@@ -363,6 +431,8 @@ public final class ExcessiveForbearanceRule: NonPaymentDurationRule {
 /// Rule to check for unexplained interest capitalization events
 public struct UnexplainedCapitalizationRule: AuditRule {
     public let ruleCode = "CAP_UNEXP_001"
+    public let title = NSLocalizedString("Unexplained Interest Capitalization", comment: "Title for unexplained capitalization rule")
+    public let docsURL = URL(string: "https://studentaid.gov/understand-aid/types/loans/interest-rates#capitalization")
     
     public func evaluate(_ loan: LoanDetails) -> AuditResult? {
         guard !loan.interestCapitalizationEvents.isEmpty else { return nil }
@@ -388,19 +458,19 @@ public struct UnexplainedCapitalizationRule: AuditRule {
                 .joined(separator: ", ")
             
             let description = String(format: NSLocalizedString(
-                "Found %d unexplained interest capitalization events on: %@",
+                "Found %@ unexplained interest capitalization events on: %@",
                 comment: "Message format for unexplained capitalization events"
-            ), unexplainedEvents.count, datesString)
+            ), AuditFormatters.formatInteger(unexplainedEvents.count), datesString)
             
             // Use SeverityScaler for consistent severity classification
             let severity = SeverityScaler.scale(
                 value: Double(unexplainedEvents.count),
                 moderate: 1.0,
                 high: Double(AuditPolicy.highCapitalizationEventCount)
-            )
+            ) ?? .low
             
             let action = NSLocalizedString(
-                "Request detailed explanation from loan servicer for each capitalization event. Review loan terms to verify if these events were permitted.",
+                "Request detailed explanation from your loan servicer for each capitalization event. Review your loan terms to verify if these events were permitted under your loan agreement.",
                 comment: "Action for unexplained capitalization events"
             )
             
@@ -410,7 +480,9 @@ public struct UnexplainedCapitalizationRule: AuditRule {
                 description: description,
                 severity: severity,
                 suggestedAction: action,
-                affectedDates: unexplainedEvents
+                affectedDates: unexplainedEvents,
+                docsURL: docsURL,
+                title: title
             )
         }
         
@@ -422,6 +494,8 @@ public struct UnexplainedCapitalizationRule: AuditRule {
 public final class ExtendedNonPaymentRule: AuditRule {
     private let minimumMonths: Int
     public let ruleCode = "NONPAY_001"
+    public let title = NSLocalizedString("Extended Non-Payment Period", comment: "Title for extended non-payment rule")
+    public let docsURL = URL(string: "https://studentaid.gov/manage-loans/default/getting-out")
     
     public init(minimumMonths: Int = AuditPolicy.minNonPaymentMonths) {
         self.minimumMonths = minimumMonths
@@ -441,9 +515,9 @@ public final class ExtendedNonPaymentRule: AuditRule {
                 .joined(separator: "; ")
             
             let description = String(format: NSLocalizedString(
-                "Found %d periods of non-payment without corresponding forbearance or deferment status: %@",
+                "Found %@ periods of non-payment without corresponding forbearance or deferment status: %@",
                 comment: "Message for unexplained non-payment periods"
-            ), unexplainedPeriods.count, periodsDescription)
+            ), AuditFormatters.formatInteger(unexplainedPeriods.count), periodsDescription)
             
             // Calculate severity based on number of periods and total duration
             let totalDays = unexplainedPeriods.reduce(0) { total, interval in
@@ -454,10 +528,10 @@ public final class ExtendedNonPaymentRule: AuditRule {
                 value: Double(totalDays),
                 moderate: Double(AuditPolicy.moderateNonPaymentDays),
                 high: Double(AuditPolicy.highNonPaymentDays)
-            )
+            ) ?? .low
             
             let action = NSLocalizedString(
-                "Request documentation for these periods to confirm loan status. If payments were made, verify they were properly applied.",
+                "Request detailed documentation for these periods to confirm your loan status. If payments were made during these periods, request verification that they were properly applied to your account.",
                 comment: "Action for unexplained non-payment periods"
             )
             
@@ -470,7 +544,9 @@ public final class ExtendedNonPaymentRule: AuditRule {
                 description: description,
                 severity: severity,
                 suggestedAction: action,
-                affectedDates: affectedDates
+                affectedDates: affectedDates,
+                docsURL: docsURL,
+                title: title
             )
         }
         
@@ -482,6 +558,8 @@ public final class ExtendedNonPaymentRule: AuditRule {
 public struct HighInterestRateRule: AuditRule {
     private let threshold: Double
     public let ruleCode = "INTEREST_HIGH_001"
+    public let title = NSLocalizedString("Unusually High Interest Rate", comment: "Title for high interest rate rule")
+    public let docsURL = URL(string: "https://studentaid.gov/understand-aid/types/loans/interest-rates")
     
     /// Initialize with default threshold from AuditPolicy
     public init() {
@@ -509,10 +587,10 @@ public struct HighInterestRateRule: AuditRule {
             value: excess,
             moderate: AuditPolicy.moderateExcessInterestRate,
             high: AuditPolicy.highExcessInterestRate
-        )
+        ) ?? .low
         
         let action = NSLocalizedString(
-            "Verify that the interest rate is correctly applied. Consider refinancing options if the rate is indeed this high.",
+            "Verify that the interest rate is correctly applied to your loan. If the rate is accurate, consider researching refinancing options to potentially lower your interest rate and overall repayment costs.",
             comment: "Action for high interest rate"
         )
         
@@ -521,16 +599,35 @@ public struct HighInterestRateRule: AuditRule {
             ruleCode: ruleCode,
             description: description,
             severity: severity,
-            suggestedAction: action
+            suggestedAction: action,
+            docsURL: docsURL,
+            title: title
         )
+    }
+}
+
+/// Configuration for the loan audit engine
+public struct AuditPolicyConfig: Sendable {
+    /// The policy values to use for auditing
+    public let policy: AuditPolicy.Type
+    
+    /// Initialize with default policy
+    public init() {
+        self.policy = AuditPolicy.self
+    }
+    
+    /// Initialize with custom policy
+    public init(policy: AuditPolicy.Type) {
+        self.policy = policy
     }
 }
 
 /// The main engine responsible for running audit rules and collecting results
 public class LoanAuditEngine {
     private var rules: [AuditRule]
+    private let policyConfig: AuditPolicyConfig
     
-    /// Initialize with default rules
+    /// Initialize with default rules and policy
     /// - Note: This initializer creates a standard set of audit rules with default thresholds
     public init() {
         self.rules = [
@@ -539,12 +636,32 @@ public class LoanAuditEngine {
             ExtendedNonPaymentRule(),
             HighInterestRateRule()
         ]
+        self.policyConfig = AuditPolicyConfig()
     }
     
     /// Initialize with custom rules
     /// - Parameter rules: An array of AuditRule implementations to use
     public init(rules: [AuditRule]) {
         self.rules = rules
+        self.policyConfig = AuditPolicyConfig()
+    }
+    
+    /// Initialize with custom rules and policy
+    /// - Parameters:
+    ///   - policy: The policy configuration to use
+    ///   - rules: An array of AuditRule implementations to use
+    public init(policy: AuditPolicyConfig, rules: [AuditRule]? = nil) {
+        self.policyConfig = policy
+        if let customRules = rules {
+            self.rules = customRules
+        } else {
+            self.rules = [
+                ExcessiveForbearanceRule(),
+                UnexplainedCapitalizationRule(),
+                ExtendedNonPaymentRule(),
+                HighInterestRateRule()
+            ]
+        }
     }
     
     /// Add a rule to the engine
