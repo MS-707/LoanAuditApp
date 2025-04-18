@@ -1,5 +1,6 @@
 import Foundation
 import PDFKit
+import os.log
 
 /// Errors that can occur during PDF parsing
 public enum PDFParsingError: Error {
@@ -41,6 +42,9 @@ public enum LoanServicerType {
 
 /// Utilities for working with dates in loan documents
 public struct DateParsingUtils {
+    /// Cache for date formatters to improve performance
+    private static var formattersCache: [String: DateFormatter] = [:]
+    
     /// Standard date formats commonly found in loan documents
     static let commonFormats: [String] = [
         "MM/dd/yyyy",
@@ -58,11 +62,19 @@ public struct DateParsingUtils {
     /// - Returns: A Date if successful, nil otherwise
     static func parseDate(_ dateString: String) -> Date? {
         let trimmedString = dateString.trimmingCharacters(in: .whitespacesAndNewlines)
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
         
         for format in commonFormats {
-            formatter.dateFormat = format
+            // Get or create a formatter for this format
+            let formatter: DateFormatter
+            if let cachedFormatter = formattersCache[format] {
+                formatter = cachedFormatter
+            } else {
+                formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.dateFormat = format
+                formattersCache[format] = formatter
+            }
+            
             if let date = formatter.date(from: trimmedString) {
                 return date
             }
@@ -102,7 +114,7 @@ public struct DateParsingUtils {
                     }
                 }
             } catch {
-                print("Error creating regex: \(error)")
+                os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
             }
         }
         
@@ -116,8 +128,8 @@ public struct NumberParsingUtils {
     /// - Parameter text: Text containing a currency value
     /// - Returns: The extracted Double value, or nil if not found
     static func extractCurrencyAmount(from text: String) -> Double? {
-        // Pattern matches currency with $ and commas, with optional decimal places
-        let pattern = #"\$\s*([0-9,]+(\.[0-9]{1,2})?)"#
+        // Pattern matches currency with optional $ and parentheses, negative sign, with commas and optional decimal places
+        let pattern = #"[\$\(]?\s*-?([0-9,]+(\.[0-9]{1,2})?)\)?"#
         
         do {
             let regex = try NSRegularExpression(pattern: pattern, options: [])
@@ -127,10 +139,16 @@ public struct NumberParsingUtils {
             if let match = matches.first, let valueRange = Range(match.range(at: 1), in: text) {
                 let valueString = String(text[valueRange])
                     .replacingOccurrences(of: ",", with: "")
+                
+                // Handle parentheses for negative values
+                if text.contains("(") && text.contains(")") {
+                    return -Double(valueString)!
+                }
+                
                 return Double(valueString)
             }
         } catch {
-            print("Error creating regex: \(error)")
+            os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
         }
         
         return nil
@@ -150,10 +168,15 @@ public struct NumberParsingUtils {
             
             if let match = matches.first, let valueRange = Range(match.range(at: 1), in: text) {
                 let valueString = String(text[valueRange])
-                return Double(valueString)
+                if let rate = Double(valueString) {
+                    // Sanity check for realistic interest rates
+                    if (0...20).contains(rate) {
+                        return rate
+                    }
+                }
             }
         } catch {
-            print("Error creating regex: \(error)")
+            os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
         }
         
         return nil
@@ -208,14 +231,17 @@ public class PDFLoanParser {
     /// - Parameter pdf: The PDF document to parse
     /// - Returns: A structured LoanDetails object
     /// - Throws: PDFParsingError if extraction fails
-    public func extractLoanDetails(from pdf: PDFDocument) throws -> LoanDetails {
+    public func extractLoanDetails(from pdf: PDFDocument) async throws -> LoanDetails {
         // Validate PDF
-        guard let pageCount = pdf.pageCount, pageCount > 0 else {
+        guard pdf.pageCount > 0 else {
             throw PDFParsingError.documentEmpty
         }
         
-        // Extract text from all pages
-        let documentText = normalizeDocument(pdf)
+        // Extract text from all pages (offload to background thread)
+        let documentText = try await Task.detached {
+            self.normalizeDocument(pdf)
+        }.value
+        
         guard !documentText.isEmpty else {
             throw PDFParsingError.unreadableDocument
         }
@@ -228,6 +254,11 @@ public class PDFLoanParser {
         
         // Extract interest rate
         let interestRate = try extractInterestRate(from: documentText)
+        
+        // Verify interest rate is in a valid range
+        guard (0...20).contains(interestRate) else {
+            throw PDFParsingError.invalidFieldFormat("interestRate")
+        }
         
         // Extract current balance
         let currentBalance = try extractCurrentBalance(from: documentText)
@@ -331,6 +362,7 @@ public class PDFLoanParser {
                         }
                     }
                 } catch {
+                    os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
                     continue
                 }
             }
@@ -409,10 +441,7 @@ public class PDFLoanParser {
             for pattern in interestRatePatterns {
                 if lowerLine.contains(pattern) {
                     if let rate = NumberParsingUtils.extractInterestRate(from: line) {
-                        // Validate reasonableness of rate (0.1% to 25%)
-                        if rate > 0.1 && rate < 25.0 {
-                            return rate
-                        }
+                        return rate
                     }
                 }
             }
@@ -426,16 +455,14 @@ public class PDFLoanParser {
         
         for line in interestContext {
             if let rate = NumberParsingUtils.extractInterestRate(from: line) {
-                if rate > 0.1 && rate < 25.0 {
-                    return rate
-                }
+                return rate
             }
         }
         
         // Final attempt with broader regex pattern
         let pattern = #"interest\s+rate.*?(\d+\.\d+)%"#
         if let rateStr = extractTextWithRegex(pattern: pattern, from: documentText.joined(separator: " ")),
-           let rate = Double(rateStr), rate > 0.1 && rate < 25.0 {
+           let rate = Double(rateStr), (0...20).contains(rate) {
             return rate
         }
         
@@ -694,7 +721,7 @@ public class PDFLoanParser {
                     }
                 }
             } catch {
-                print("Error with regex: \(error)")
+                os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
             }
         }
         
@@ -822,7 +849,7 @@ public class PDFLoanParser {
                     }
                 }
             } catch {
-                print("Error with regex: \(error)")
+                os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
             }
         }
         
@@ -849,7 +876,7 @@ public class PDFLoanParser {
                     }
                 }
             } catch {
-                print("Error with regex: \(error)")
+                os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
             }
         }
         
@@ -926,7 +953,7 @@ public class PDFLoanParser {
                 return String(text[range])
             }
         } catch {
-            print("Error creating regex: \(error)")
+            os_log(.error, "PDFLoanParser regex error: %{public}@", String(describing: error))
         }
         
         return nil
