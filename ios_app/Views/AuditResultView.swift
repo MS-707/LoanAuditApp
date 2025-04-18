@@ -196,9 +196,11 @@ struct AuditResultRowView: View {
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(result.title), \(result.severity.accessibilityDescription)")
-        .accessibilityHint(isActionExpanded
-    ? "Collapse suggested action"
-    : "Expand suggested action")
+        .accessibilityHint(
+    isActionExpanded ?
+        "Collapse suggested action" :
+        "Expand suggested action"
+)
         .accessibilityAction {
             withAnimation {
                 isActionExpanded.toggle()
