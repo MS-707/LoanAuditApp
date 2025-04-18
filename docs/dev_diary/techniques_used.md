@@ -85,6 +85,30 @@
   - Extensibility for different loan servicer formats
   - Privacy-first design with on-device processing
 
+## [AuditResultView]
+- Design Pattern(s): 
+  - Compositional layout with reusable components
+  - View modeling with clean data flow
+  - Extension pattern for color mapping
+  - State management with SwiftUI state property wrapper
+- Libraries/Frameworks Used: 
+  - SwiftUI (List, Section, DisclosureGroup)
+  - UIKit (UIColor) for system colors
+- Accessibility Enhancements: 
+  - VoiceOver support with clear labels and context
+  - Dynamic Type support with appropriate font styles
+  - State-dependent accessibility hints
+  - Used system colors for Dark Mode safety
+- Unit Testing Strategy: 
+  - Mock data generation for consistent previews
+  - Simple logic tests for color mapping verification
+  - Separate previews for different view states
+- Architectural Considerations: 
+  - Hierarchical organization for related issues
+  - Clear separation of row and list components
+  - Positive empty state messaging
+  - Structured accessibility metadata
+
 ## [LoanDetails Model]
 - Design Pattern(s): 
   - Value types for data immutability (structs)

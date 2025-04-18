@@ -5,14 +5,10 @@ extension AuditSeverity {
     /// Returns a color representing the severity level
     var color: Color {
         switch self {
-        case .low:
-            return Color.yellow
-        case .moderate:
-            return Color.orange
-        case .high:
-            return Color.red
-        case .critical:
-            return Color(red: 0.7, green: 0, blue: 0) // dark red
+        case .low:       return Color(.systemYellow)
+        case .moderate:  return Color(.systemOrange)
+        case .high:      return Color(.systemRed)
+        case .critical:  return Color(.systemRed).opacity(0.8) // darker red
         }
     }
     
@@ -200,7 +196,9 @@ struct AuditResultRowView: View {
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(result.title), \(result.severity.accessibilityDescription)")
-        .accessibilityHint("Double tap to \(isActionExpanded ? "hide" : "show") suggested action")
+        .accessibilityHint(isActionExpanded
+    ? "Collapse suggested action"
+    : "Expand suggested action")
         .accessibilityAction {
             withAnimation {
                 isActionExpanded.toggle()
@@ -240,10 +238,10 @@ struct AuditResultViewTests {
     /// Tests that severity levels map to expected colors
     static func testSeverityColors() -> Bool {
         let expectedColors: [AuditSeverity: Color] = [
-            .low: .yellow,
-            .moderate: .orange,
-            .high: .red,
-            .critical: Color(red: 0.7, green: 0, blue: 0)
+            .low: Color(.systemYellow),
+            .moderate: Color(.systemOrange),
+            .high: Color(.systemRed),
+            .critical: Color(.systemRed).opacity(0.8)
         ]
         
         // Verify all severity levels map to expected colors
