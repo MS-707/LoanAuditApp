@@ -8,6 +8,7 @@ final class AuditReviewViewModel: ObservableObject {
         case initial        // Waiting for user to select a PDF
         case loading        // PDF parsing and audit in progress
         case results        // Audit results available
+        case resultsEmpty   // audit ran, no issues
         case error(String)  // An error occurred during the process
     }
     
@@ -44,7 +45,7 @@ final class AuditReviewViewModel: ObservableObject {
                 // Update UI on main thread
                 await MainActor.run {
                     self.auditResults = results
-                    self.state = .results
+                    self.state = results.isEmpty ? .resultsEmpty : .results
                 }
             } catch let error as PDFParsingError {
                 await MainActor.run {
@@ -80,7 +81,7 @@ final class AuditReviewViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self = self else { return }
             self.auditResults = AuditResult.mockSamples
-            self.state = .results
+            self.state = self.auditResults.isEmpty ? .resultsEmpty : .results
         }
     }
     
@@ -114,6 +115,8 @@ struct AuditReviewContainerView: View {
                     loadingView
                 case .results:
                     AuditResultView(results: viewModel.auditResults)
+                case .resultsEmpty:
+                    noIssuesView
                 case .error(let message):
                     errorView(message)
                 }
@@ -121,7 +124,7 @@ struct AuditReviewContainerView: View {
             .navigationTitle("Loan Audit")
             .toolbar {
                 // Show reset button when audit is complete
-                if case .results = viewModel.state {
+                if case .results = viewModel.state || case .resultsEmpty = viewModel.state {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: viewModel.reset) {
                             Text("New Audit")
@@ -136,6 +139,15 @@ struct AuditReviewContainerView: View {
                             .opacity(0.001) // Visually hidden but tappable
                     }
                 }
+                
+                #if DEBUG
+                // Show dev mode toggle in the initial state toolbar
+                if case .initial = viewModel.state {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Toggle("Dev Mode", isOn: $viewModel.devModeEnabled)
+                    }
+                }
+                #endif
             }
             .sheet(isPresented: $showingDocumentPicker) {
                 DocumentPicker(selectedURL: { url in
@@ -170,20 +182,22 @@ struct AuditReviewContainerView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
             
-            Button(action: {
-                showingDocumentPicker = true
-            }) {
-                HStack {
-                    Image(systemName: "doc.badge.plus")
-                    Text("Select PDF Statement")
+            Button("Select PDF") { 
+                if viewModel.devModeEnabled {
+                    viewModel.auditResults = AuditResult.mockSamples
+                    viewModel.state = .results
+                    return
                 }
-                .padding()
-                .frame(minWidth: 240)
-                .background(Color(.systemBlue))
-                .foregroundColor(.white)
-                .cornerRadius(10)
+                
+                showingDocumentPicker = true 
             }
-            .padding(.top, 15)
+            .padding()
+            .frame(minWidth: 240)
+            .background(Color(.systemBlue))
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .accessibilityLabel("Choose a loan statement PDF for audit")
+            
         }
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
@@ -219,6 +233,18 @@ struct AuditReviewContainerView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Processing loan document")
         .accessibilityHint("Please wait while we analyze your loan statement")
+    }
+    
+    /// View shown when the audit runs but no issues are found
+    private var noIssuesView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.green)
+            Text("No major issues found")
+                .font(.title3)
+        }
+        .accessibilityElement(children: .combine)
     }
     
     /// View shown when an error occurs during the audit process
@@ -343,6 +369,10 @@ struct AuditReviewContainerView_Previews: PreviewProvider {
             // Results state
             ResultsStatePreview()
                 .previewDisplayName("Results State")
+                
+            // Empty results state
+            EmptyResultsStatePreview()
+                .previewDisplayName("Empty Results State")
             
             // Error state
             ErrorStatePreview()
@@ -372,6 +402,14 @@ struct AuditReviewContainerView_Previews: PreviewProvider {
         var body: some View {
             NavigationView {
                 AuditReviewContainerView(viewModel: mockViewModel(state: .error("Unable to extract required loan information from this document.")))
+            }
+        }
+    }
+    
+    struct EmptyResultsStatePreview: View {
+        var body: some View {
+            NavigationView {
+                AuditReviewContainerView(viewModel: mockViewModel(state: .resultsEmpty))
             }
         }
     }

@@ -93,15 +93,18 @@
   - Dependency injection for preview testing
   - Extension pattern for convenience initializers
 - Libraries/Frameworks Used: 
-  - SwiftUI (NavigationView, ProgressView, sheet)
+  - SwiftUI (NavigationView, ProgressView, sheet, Toggle)
   - UIKit integration (UIDocumentPickerViewController)
   - Combine for state publication
   - Swift Concurrency (async/await, Task)
+  - Conditional compilation for development features
 - Accessibility Enhancements: 
   - Comprehensive labels for each workflow state
   - Status announcements during transitions
   - Clear error messaging
   - Minimum tap target sizes
+  - State-driven accessibility feedback
+  - Color(.system*) for automatic dark mode adaptation
 - Unit Testing Strategy: 
   - Separate preview for each UI state
   - Mocked view models for deterministic testing

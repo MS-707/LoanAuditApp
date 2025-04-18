@@ -8,7 +8,7 @@ extension AuditSeverity {
         case .low:       return Color(.systemYellow)
         case .moderate:  return Color(.systemOrange)
         case .high:      return Color(.systemRed)
-        case .critical:  return Color(.systemRed).opacity(0.8) // darker red
+        case .critical:  return Color(.systemRed).opacity(0.8)
         }
     }
     
