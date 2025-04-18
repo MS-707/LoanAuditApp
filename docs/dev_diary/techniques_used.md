@@ -85,6 +85,35 @@
   - Extensibility for different loan servicer formats
   - Privacy-first design with on-device processing
 
+## [AuditReviewContainerView]
+- Design Pattern(s): 
+  - MVVM architecture with ObservableObject
+  - State machine for UI flow management
+  - Composition with UIViewControllerRepresentable
+  - Dependency injection for preview testing
+  - Extension pattern for convenience initializers
+- Libraries/Frameworks Used: 
+  - SwiftUI (NavigationView, ProgressView, sheet)
+  - UIKit integration (UIDocumentPickerViewController)
+  - Combine for state publication
+  - Swift Concurrency (async/await, Task)
+- Accessibility Enhancements: 
+  - Comprehensive labels for each workflow state
+  - Status announcements during transitions
+  - Clear error messaging
+  - Minimum tap target sizes
+- Unit Testing Strategy: 
+  - Separate preview for each UI state
+  - Mocked view models for deterministic testing
+  - Clear separation of UI and business logic
+  - Error state validation
+- Architectural Considerations: 
+  - Complete workflow coordination
+  - Responsive UI with background processing
+  - Explicit error handling with user guidance
+  - Hidden development shortcuts for testing
+  - Security-scoped resource access
+
 ## [AuditResultView]
 - Design Pattern(s): 
   - Compositional layout with reusable components
