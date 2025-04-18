@@ -27,3 +27,29 @@
   - Protocol-based design for extensibility
   - Enum-based categorization for consistency
   - Pure functions in rules for predictability and testing
+
+## [Loan Audit Engine Optimization]
+- Design Pattern(s): 
+  - Inheritance for shared rule implementation (NonPaymentDurationRule base class)
+  - Factory methods for test data creation
+  - Singleton-like shared formatters
+  - Policy pattern for centralized configuration
+  - Fluent interface for SeverityScaler
+- Libraries/Frameworks Used: 
+  - Foundation (NSLocalizedString, NumberFormatter)
+  - Swift Concurrency (async/await, TaskGroup)
+- Accessibility Enhancements: 
+  - Internationalization with NSLocalizedString for all user-facing messages
+  - Consistent date and number formatting with locale support
+  - Comparable interface for severity levels
+- Unit Testing Strategy: 
+  - Factory methods create pre-configured test data
+  - Equatable conformance for easy result comparison
+  - Rule codes for precise identification in tests
+  - Base classes for testing related rule types
+- Architectural Considerations: 
+  - Centralized configuration with AuditPolicy struct
+  - Consolidated formatting with AuditFormatters
+  - Consistent severity calculation with SeverityScaler
+  - Strong public interfaces with well-documented parameters
+  - Final classes where inheritance is not intended
