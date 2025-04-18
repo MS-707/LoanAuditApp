@@ -53,3 +53,34 @@
   - Consistent severity calculation with SeverityScaler
   - Strong public interfaces with well-documented parameters
   - Final classes where inheritance is not intended
+
+## [PDF Loan Parser]
+- Design Pattern(s): 
+  - Composition over inheritance
+  - Builder pattern for constructing LoanDetails incrementally
+  - Strategy pattern for different parsing approaches
+  - Utility pattern for reusable parsing functions
+  - Error handling with custom domain-specific errors
+- Libraries/Frameworks Used: 
+  - PDFKit (PDFDocument, page handling, text extraction)
+  - Foundation (Regular expressions, date handling)
+  - NSRegularExpression for pattern matching
+- Accessibility Enhancements: 
+  - Error messages designed for clear user feedback
+  - Robust error handling with specific error types
+  - Fallback strategies to ensure data availability
+- Unit Testing Strategy: 
+  - Clear separation of document reading from parsing logic
+  - Field extraction methods designed for independent testing
+  - Validation logic centralized for consistent data quality
+  - Error conditions clearly specified for test coverage
+- Architectural Considerations: 
+  - Modular extraction methods for each field type
+  - Clear separation of concerns:
+    - Document normalization
+    - Pattern recognition
+    - Date and number parsing
+    - Field validation
+    - Entity construction
+  - Extensibility for different loan servicer formats
+  - Privacy-first design with on-device processing
