@@ -84,3 +84,26 @@
     - Entity construction
   - Extensibility for different loan servicer formats
   - Privacy-first design with on-device processing
+
+## [LoanDetails Model]
+- Design Pattern(s): 
+  - Value types for data immutability (structs)
+  - Nested types for logical grouping
+  - Protocol conformance for framework integration
+  - Conditional compilation for test support
+- Libraries/Frameworks Used: 
+  - Foundation (Date, Calendar)
+  - Swift standard library (Codable, Equatable)
+- Accessibility Enhancements: 
+  - Clear documentation for all public properties
+  - Logical data organization and field naming
+- Unit Testing Strategy: 
+  - Static factory method for test data generation
+  - Equatable conformance for comparison in tests
+  - Codable conformance for serialization testing
+- Architectural Considerations: 
+  - Shared model between parser and audit systems
+  - Strongly typed enumerations (Kind)
+  - Clear separation of data from behavior
+  - Modular design with computed properties for analysis
+  - Sendable conformance for thread safety
