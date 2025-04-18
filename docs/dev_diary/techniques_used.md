@@ -85,6 +85,29 @@
   - Extensibility for different loan servicer formats
   - Privacy-first design with on-device processing
 
+## [AuditAppShell]
+- Design Pattern(s): 
+  - Adaptive layout pattern
+  - Platform-specific UI branching
+  - Composition with NavigationView/NavigationSplitView
+  - Single responsibility principle
+- Libraries/Frameworks Used: 
+  - SwiftUI (NavigationView, NavigationSplitView)
+  - UIKit device detection for adaptive layouts
+  - Conditional compilation for platform differences
+- Accessibility Enhancements: 
+  - Semantic navigation structure
+  - Standard title positioning
+  - Properly labeled toolbar items
+- Unit Testing Strategy: 
+  - Simple preview integration
+  - Platform-specific preview variants
+- Architectural Considerations: 
+  - Navigation as composition root
+  - Placeholder toolbar with help action
+  - iPad/iPhone adaptive design
+  - Separation between shell and content
+
 ## [AuditReviewContainerView]
 - Design Pattern(s): 
   - MVVM architecture with ObservableObject

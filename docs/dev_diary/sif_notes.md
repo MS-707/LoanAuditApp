@@ -121,5 +121,7 @@ One unresolved question is how to make the audit results more actionable - futur
 
 The final iteration shows how the container's state machine evolved via hybrid review, with the addition of a dedicated "empty results" state emerging through collaborative refinement rather than being part of the initial design. This demonstrates the value of incremental interface improvements based on both human and AI insights into the user experience flow.
 
+The addition of the AuditAppShell as the top-level navigation container finalizes the MVP structure, providing a clean separation between navigation/app-level concerns and the workflow implementation. This shell approach creates a clear composition pattern where the app's navigation structure becomes the composition root that assembles the various specialized components.
+
 ### Reference:
 See related journal entries at: https://github.com/MS-707/Darker-Edge/tree/main/journal_entries

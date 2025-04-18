@@ -267,3 +267,26 @@ Approximately 20 minutes saved by applying targeted quality-of-life improvements
 
 ### Observations:
 - Implemented empty-results state, adaptive colours, dynamic AX hint
+
+---
+
+## [Date: 2025-04-17 | Time: 22:30]
+### Task:
+Create AuditAppShell as top-level container for the application.
+
+### Human Input:
+Implement a top-level shell view to wrap the audit workflow.
+
+### Claude's Approach:
+Created a navigation shell with platform adaptive layout.
+
+### Output Summary:
+- Implemented `AuditAppShell.swift` with NavigationView wrapper
+- Added About view placeholder accessible from help icon
+- Included iPad support with NavigationSplitView
+
+### Time Estimate:
+Approximately 15 minutes saved by implementing a complete app shell.
+
+### Observations:
+- Created top-level navigation shell with proper title and help button
