@@ -1037,14 +1037,8 @@ struct SimulatorTestButton: View {
     }
     
     var buttonColor: Color {
-        switch docType {
-        case .pdf:
-            return Color.orange
-        case .csv:
-            return Color.green
-        case .text:
-            return Color.purple
-        }
+        // All buttons use blue color now
+        return Color.blue
     }
     
     var body: some View {
@@ -1323,7 +1317,7 @@ struct LoanAuditView: View {
                     errorView
                 }
             }
-            .navigationTitle("Loan Audit")
+            .navigationTitle("LoanScope")
             .toolbar {
                 // Only show the reset button when not in initial state
                 if viewModel.state != .initial {
@@ -1371,9 +1365,9 @@ struct LoanAuditView: View {
                 .padding(.bottom, 10)
             
             // Main title
-            Text("Audit Your Student Loan")
-                .font(.title)
-                .fontWeight(.bold)
+            Text("LoanScope")
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundColor(.blue)
             
             // Description
             Text("Upload your loan statement to find potential issues and get actionable insights.")
@@ -1393,10 +1387,9 @@ struct LoanAuditView: View {
                 .foregroundColor(.white)
                 .cornerRadius(10)
                 
-                Text("Simulator Test Files")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 10)
+                // Space between the main button and test buttons
+                Spacer()
+                    .frame(height: 15)
                 
                 // Simulator test buttons for document testing
                 SimulatorTestButton(docType: .pdf) { docType in
