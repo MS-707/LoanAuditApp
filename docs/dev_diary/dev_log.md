@@ -1,5 +1,69 @@
 # Development Journal
 
+## [Date: 2025-04-22 | Time: 17:00]
+### Task:
+Implement a three-screen onboarding flow for first-time users.
+
+### Human Input:
+Create an onboarding experience that introduces users to LoanScope's purpose, privacy principles, and what to expect. The onboarding should only appear on first launch.
+
+### Claude's Approach:
+1. Designed a reusable page component for consistent layout across all screens
+2. Created a three-page flow using SwiftUI's TabView with page style
+3. Implemented persistent storage with @AppStorage to track onboarding status
+4. Added conditional logic to app entry point to show onboarding only to new users
+
+### Output Summary:
+- Created `OnboardingFlow.swift` with:
+  - Three-page onboarding experience with page indicators
+  - Clear messaging about privacy, purpose, and expectations
+  - Smooth animations between pages
+  - Persistent state tracking with `@AppStorage`
+- Modified app entry point to conditionally display onboarding
+- Added proper accessibility labels and support
+- Implemented design with Apple SF Symbols and consistent branding
+
+### Time Estimate:
+Approximately 45 minutes saved by implementing a comprehensive onboarding system.
+
+### Observations:
+The onboarding flow provides essential context for new users, clearly communicating the app's privacy-first approach. By emphasizing that data stays on the device, users gain confidence in the security of their sensitive loan information. The flow also sets appropriate expectations for the app's functionality.
+
+---
+
+## [Date: 2025-04-22 | Time: 15:30]
+### Task:
+Implement contextual help system for audit results to provide user-friendly explanations.
+
+### Human Input:
+Create a component that explains audit issues in plain language to help users understand the implications of findings.
+
+### Claude's Approach:
+1. Designed AuditResultHelpView as a self-contained component
+2. Created a mapping system that provides detailed explanations for each issue type
+3. Integrated help view with existing AuditResultRowView using a button + sheet pattern
+4. Added accessibility support and consistent styling
+
+### Output Summary:
+- Created `AuditResultHelpView.swift` with:
+  - Detailed explanations for all six audit issue types
+  - Clean, consistent UI with proper header, scrollable content, and dismiss button
+  - Extension on AuditIssue to provide user-friendly titles
+  - Modal presentation with animation for smooth transitions
+- Updated `AuditResultView.swift` to integrate help system:
+  - Added help button to each audit result row
+  - Implemented sheet presentation for help content
+  - Enhanced accessibility with appropriate labels
+- Updated README.md and documentation to reflect new features
+
+### Time Estimate:
+Approximately 60 minutes saved by implementing a comprehensive help system with full integration.
+
+### Observations:
+The contextual help system provides critical information in plain language, improving the app's usability for non-expert users. By explaining why each issue matters and what it means in practice, users are empowered to better understand their student loans and take appropriate action.
+
+---
+
 ## [Date: 2025-04-22 | Time: 05:45]
 ### Task:
 Implement file format support for CSV and text files and prepare app for iOS device testing.
