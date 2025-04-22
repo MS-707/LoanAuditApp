@@ -3,13 +3,16 @@ import SwiftUI
 @main
 struct LoanAuditProjectApp: App {
     @State private var showSplash = true
+    @State private var showWelcome = false
     
     var body: some Scene {
         WindowGroup {
             if showSplash {
-                SplashScreenView(isShowing: $showSplash)
+                SplashScreenView(isShowing: $showSplash, showWelcomeNext: $showWelcome)
+            } else if showWelcome {
+                WelcomeView()
             } else {
-                LoanAuditView()
+                AuditAppShell()
             }
         }
     }
@@ -18,6 +21,7 @@ struct LoanAuditProjectApp: App {
 /// Splash screen for LoanScope
 struct SplashScreenView: View {
     @Binding var isShowing: Bool
+    @Binding var showWelcomeNext: Bool
     
     var body: some View {
         ZStack {
@@ -48,6 +52,7 @@ struct SplashScreenView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 withAnimation {
                     isShowing = false
+                    showWelcomeNext = true
                 }
             }
         }
