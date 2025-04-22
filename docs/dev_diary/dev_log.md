@@ -1,5 +1,39 @@
 # Development Journal
 
+## [Date: 2025-04-22 | Time: 05:45]
+### Task:
+Implement file format support for CSV and text files and prepare app for iOS device testing.
+
+### Human Input:
+Enhance the app to support not just PDF files but also CSV and text files for broader accessibility. Also needed to create a testable version of the app for iPhone.
+
+### Claude's Approach:
+1. Created a unified DocumentParser class that can handle PDFs, CSVs, and text files
+2. Implemented specific parsing logic for each file format with cross-format compatibility
+3. Built a document preview system that adapts to different file types
+4. Created a complete Xcode project structure for device testing
+5. Addressed device deployment issues with Apple Developer accounts
+
+### Output Summary:
+- Enhanced app to support multiple file formats:
+  - Added CSV parser with both column-based and key-value pair formats
+  - Added text file parser with robust pattern matching
+  - Created format-independent preview components
+- Built UI improvements:
+  - Created color-coded buttons for different file type testing
+  - Added TextFilePreviewView for non-PDF formats
+  - Implemented a DocumentPreviewView that adapts to different formats
+- Generated streamlined simulator version for testing without device limitations
+- Created complete Xcode project with proper structure for device deployment
+
+### Time Estimate:
+Approximately 120 minutes saved by implementing multi-format support and creating ready-to-deploy project.
+
+### Observations:
+The multi-format support significantly increases accessibility of the app. Users without PDF statements can now use CSV exports from their bank or even simple text notes about their loans. The testing infrastructure with test files for each format makes development and quality assurance much easier. The app maintains consistent parsing logic across formats while handling the unique characteristics of each file type.
+
+---
+
 ## [Date: 2025-04-17 | Time: 10:00]
 ### Task:
 Set up initial repository structure for the Student Loan Audit App.
