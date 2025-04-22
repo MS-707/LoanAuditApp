@@ -1268,6 +1268,7 @@ struct SelectedDocumentView: View {
 struct LoanAuditView: View {
     /// View model for state management
     @StateObject private var viewModel = LoanAuditViewModel()
+    @State private var showWelcomeView = true
     
     /// Loads a test document of the specified type
     private func loadTestDocument(_ docType: LoanAuditViewModel.TestDocumentType) {
@@ -1287,69 +1288,132 @@ struct LoanAuditView: View {
     }
     
     var body: some View {
-        NavigationView {
-            VStack {
-                // Display different content based on the current state
-                switch viewModel.state {
-                case .initial:
-                    welcomeView
-                case .documentSelected:
-                    if viewModel.showingDocumentPreview, let url = viewModel.selectedDocumentURL {
-                        SelectedDocumentView(
-                            url: url,
-                            onDismiss: {
-                                viewModel.dismissDocumentPreview()
-                            },
-                            onProcess: {
-                                viewModel.processDocument()
-                            }
-                        )
-                    } else {
-                        welcomeView
+        if showWelcomeView {
+            // Show our new WelcomeView
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color(.systemBackground), Color(.systemGray6)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .edgesIgnoringSafeArea(.all)
+                
+                VStack(spacing: 30) {
+                    Spacer()
+                    
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.blue)
+                        .accessibilityHidden(true)
+                    
+                    Text("Let's bring clarity to your student loans.")
+                        .font(.system(.title, design: .rounded))
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    
+                    Text("Your data stays on your device. Always.")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showWelcomeView = false
+                        }
+                    }) {
+                        HStack {
+                            Text("🔍 Securely Analyze My Loans")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(minWidth: 250)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                        .shadow(radius: 2)
                     }
-                case .loading:
-                    loadingView
-                case .results:
-                    resultsView
-                case .resultsEmpty:
-                    emptyStateView
-                case .error:
-                    errorView
+                    .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel("Securely Analyze My Loans")
+                    .padding(.bottom, 50)
                 }
+                .padding()
             }
-            .navigationTitle("LoanScope")
-            .toolbar {
-                // Only show the reset button when not in initial state
-                if viewModel.state != .initial {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("New Audit") {
-                            viewModel.reset()
+            .transition(.opacity)
+        } else {
+            // Regular app UI
+            NavigationView {
+                VStack {
+                    // Display different content based on the current state
+                    switch viewModel.state {
+                    case .initial:
+                        welcomeView
+                    case .documentSelected:
+                        if viewModel.showingDocumentPreview, let url = viewModel.selectedDocumentURL {
+                            SelectedDocumentView(
+                                url: url,
+                                onDismiss: {
+                                    viewModel.dismissDocumentPreview()
+                                },
+                                onProcess: {
+                                    viewModel.processDocument()
+                                }
+                            )
+                        } else {
+                            welcomeView
+                        }
+                    case .loading:
+                        loadingView
+                    case .results:
+                        resultsView
+                    case .resultsEmpty:
+                        emptyStateView
+                    case .error:
+                        errorView
+                    }
+                }
+                .navigationTitle("LoanScope")
+                .toolbar {
+                    // Only show the reset button when not in initial state
+                    if viewModel.state != .initial {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("New Audit") {
+                                viewModel.reset()
+                            }
                         }
                     }
+                    
+                    // Question mark help button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            // Would show help/about view
+                        }) {
+                            Image(systemName: "questionmark.circle")
+                        }
+                    }
+                    
+                    // Show dev mode toggle only in debug builds
+                    #if DEBUG
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Toggle("Dev", isOn: $viewModel.devModeEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    }
+                    #endif
                 }
-                
-                // Question mark help button
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // Would show help/about view
-                    }) {
-                        Image(systemName: "questionmark.circle")
+                .sheet(isPresented: $viewModel.showingDocumentPicker) {
+                    LoanDocumentPicker { url in
+                        viewModel.selectDocument(url: url)
                     }
                 }
-                
-                // Show dev mode toggle only in debug builds
-                #if DEBUG
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Toggle("Dev", isOn: $viewModel.devModeEnabled)
-                        .toggleStyle(SwitchToggleStyle(tint: .blue))
-                }
-                #endif
             }
-            .sheet(isPresented: $viewModel.showingDocumentPicker) {
-                LoanDocumentPicker { url in
-                    viewModel.selectDocument(url: url)
-                }
-            }
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
     }
     
